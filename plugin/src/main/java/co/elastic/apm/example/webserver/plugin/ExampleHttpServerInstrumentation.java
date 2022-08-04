@@ -215,6 +215,19 @@ public class ExampleHttpServerInstrumentation extends ElasticApmInstrumentation 
          */
         @Advice.OnMethodExit(suppress = Throwable.class, onThrowable = Throwable.class, inline = false)
         public static void onExitHandle(@Advice.Thrown Throwable thrown, @Advice.Enter Object scopeObject) {
+
+            // creating a fake child span while the other is active
+            Tracer tracer = GlobalOpenTelemetry.get().getTracer("OtherTracer");
+            Span childSpan = tracer.spanBuilder("client-span").setSpanKind(SpanKind.CLIENT).startSpan();
+            try(Scope scope = childSpan.makeCurrent()){
+                Thread.sleep(200);
+            } catch (InterruptedException e) {
+                // silently ignored
+            } finally {
+                childSpan.end();
+            }
+
+
             //Use a defensive implementation - nothing
             //that might fail will prevent anything else
             try {
